@@ -1,5 +1,6 @@
 ARG FUNCTION_DIR="/function"
 
+# RICインストール用
 FROM public.ecr.aws/docker/library/node:14-bullseye as build-image
 ARG FUNCTION_DIR
 RUN apt-get update && \
@@ -12,17 +13,19 @@ RUN apt-get update && \
 RUN mkdir -p ${FUNCTION_DIR}
 COPY package.json ${FUNCTION_DIR}
 WORKDIR ${FUNCTION_DIR}
-# npm
 RUN npm install
-RUN npx playwright install-deps chromium
 
+# 実行用
 FROM public.ecr.aws/docker/library/node:14-bullseye
 ARG FUNCTION_DIR 
 ENV CI=true
+ENV PLAYWRIGHT_BROWSERS_PATH="/browser"
+RUN mkdir -p /browser
 WORKDIR ${FUNCTION_DIR}
 COPY --from=build-image ${FUNCTION_DIR} ${FUNCTION_DIR}
+RUN npx playwright install chromium
+RUN npx playwright install-deps chromium
 COPY . ${FUNCTION_DIR}
-# entryscript
 COPY ./entry_script.sh /entry_script.sh
 RUN chmod 755 /entry_script.sh
 ENTRYPOINT [ "/bin/bash", "/entry_script.sh" ]
